@@ -5,6 +5,22 @@ set -e
 [ "$(id -u)" = "0" ] || { echo "ต้องรันเป็น root"; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 
+# ── ตรวจซีพียูก่อนเสียเวลาลงทั้งชุด ───────────────────────────────
+# VPS หลายเจ้าตั้งซีพียูเสมือนเป็นรุ่นทั่วไป (qemu64) ที่ตัดชุดคำสั่งใหม่ออก
+# ตัวโปรแกรม Claude จะค้างวนลูปตั้งแต่เริ่ม ไม่ crash ไม่มีข้อความ = หาสาเหตุยากมาก
+for f in sse4_2 popcnt; do
+  grep -qw "$f" /proc/cpuinfo || {
+    cat <<EOM
+✗ ซีพียูเครื่องนี้ไม่มีชุดคำสั่ง $f — Claude Code จะค้างไม่ยอมสตาร์ต
+
+  รุ่นซีพียูที่เห็น: $(grep -m1 "model name" /proc/cpuinfo | cut -d: -f2- | xargs)
+
+  แจ้งผู้ให้บริการ VPS ให้เปลี่ยน CPU model เป็น host-passthrough (หรือ "host")
+  แทนรุ่นจำลองทั่วไป แล้วรีสตาร์ตเครื่อง จากนั้นรันสคริปต์นี้ใหม่
+EOM
+    exit 1; }
+done
+
 echo "▸ แพ็กเกจพื้นฐาน + ฟอนต์ไทย + จอเสมือน"
 apt-get update -qq
 # fonts-thai-tlwg สำคัญ — ไม่มีแล้ว Facebook เรนเดอร์ภาษาไทยเป็นกล่องสี่เหลี่ยม

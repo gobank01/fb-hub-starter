@@ -3,7 +3,8 @@
 # (Chrome มีตัวเดียว สองงานขับพร้อมกันแล้วหน้าเว็บโดนปิดกลางคัน)
 # รันในเซสชันหน้าจอผ่าน LaunchAgent com.fbhub.hubrun (WatchPaths ~/fb-hub/jobs)
 export PATH="$HOME/.local/bin:$PATH"
-export FB_HUB_ENV="$HOME/fb-hub/.env"
+# โหลด .env ให้ทุก process ลูก (claude → node fb-recent.js อ่าน FB_HANDLE/FB_NAME จากตรงนี้)
+source "$HOME/fb-hub/bin/load-env.sh"
 setopt NULL_GLOB
 JOBS="$HOME/fb-hub/jobs"
 LOCK="$JOBS/.lock"

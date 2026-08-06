@@ -17,5 +17,5 @@ fi
 "$HOME/fb-hub/bin/chrome-bot.sh" >> "$LOG" 2>&1
 
 id="fbwatch-$(date '+%Y%m%d-%H%M%S')"
-{ print -r -- "#quiet"; cat "$HOME/fb-hub/prompts/comment-watch.txt" } > "$JOBS/$id.job"
+{ print -r -- "#quiet"; "$HOME/fb-hub/bin/render-prompt.sh" "$HOME/fb-hub/prompts/comment-watch.txt" } > "$JOBS/$id.job"
 print -r -- "$(date '+%F %T') เข้าคิวแล้ว: $id" >> "$LOG"

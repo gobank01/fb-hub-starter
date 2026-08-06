@@ -73,6 +73,7 @@ nano ~/fb-hub/prompts/comment-watch.txt
 | `bin/fb-recent.js` | หาโพสต์ + Reels ใน 7 วัน แล้วจัดคิวว่ารอบนี้กวาดอันไหน |
 | `bin/fb-pending.js` | สแกนว่าโพสต์ไหนมีใครยังไม่ได้ตอบ กี่คน |
 | `bin/notify.py` | ยิงแจ้งเตือน Telegram + LINE |
+| `bin/load-env.sh` · `bin/render-prompt.sh` | โหลด `.env` + แทนค่าลงพรอมต์ตอนสร้างงาน |
 | `bin/fbhub` | **คำสั่งเดียวคุมทุกอย่าง ใช้ได้ทั้งสองฝั่ง** — บนเครื่องคุณมันส่งต่อผ่าน ssh ให้เอง |
 | `install-controller.sh` | ลงฝั่งคนสั่ง (บนเครื่องคุณ) — สแกนหาเครื่องบอทให้ด้วย |
 | `bin/fb-group-post.js` | โพสต์คลิป + แคปชั่นลงกลุ่ม (มีด่านตรวจก่อนกดโพสต์) |

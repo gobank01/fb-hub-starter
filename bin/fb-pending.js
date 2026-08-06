@@ -7,7 +7,9 @@ const ME = process.env.FB_NAME;
 const DAYS = process.argv[2] || "7";
 
 (async () => {
-  const posts = JSON.parse(execFileSync("/opt/homebrew/bin/node", [process.env.HOME + "/bin/fb-recent.js", DAYS]).toString());
+  // เรียกด้วย node ตัวเดียวกับที่กำลังรันอยู่ (process.execPath)
+  // ห้ามฝัง /opt/homebrew/bin/node — เครื่องอื่นติดตั้ง node คนละที่
+  const posts = JSON.parse(execFileSync(process.execPath, [__dirname + "/fb-recent.js", DAYS]).toString());
   const b = await chromium.connectOverCDP("http://127.0.0.1:9222");
   const page = await b.contexts()[0].newPage();
   await page.setViewportSize({ width: 1500, height: 2200 });

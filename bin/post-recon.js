@@ -1,6 +1,7 @@
 // Read-only recon: who commented on the sales post, what they said, did we reply, and their profile link.
 const { chromium } = require('playwright-core');
 const URL = process.argv[2];
+if (!URL) { console.error('usage: post-recon.js <url โพสต์>  — ดูว่าใครคอมเมนต์ ตอบแล้วหรือยัง'); process.exit(1); }
 
 (async () => {
   const b = await chromium.connectOverCDP('http://127.0.0.1:9222');
@@ -44,7 +45,7 @@ const URL = process.argv[2];
   console.log('url:', page.url().slice(0, 90));
   console.log('คอมเมนต์ทั้งหมด:', data.length);
   data.forEach((d, i) => console.log(`${String(i).padStart(2)} ${d.replied ? '✅' : '⬜'} ${d.name}\n     "${d.body}"\n     ${d.link}`));
-  await page.screenshot({ path: 'post-recon.png' });
+  await page.screenshot({ path: require('path').join(require('os').homedir(), 'fb-hub/logs/post-recon.png') });
   await page.close();
   b.close();
 })().catch(e => { console.error('ERR', e.message); process.exit(1); });

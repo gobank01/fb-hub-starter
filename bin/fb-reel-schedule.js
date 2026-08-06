@@ -14,11 +14,12 @@ const { chromium } = require('playwright-core');
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const FILE = arg('--file');
-const CAPTION = fs.readFileSync(arg('--caption'), 'utf8').trim();
+const CAPTION_FILE = arg('--caption');
 const DATE = arg('--date');            // 2026-08-07
 const TIME = arg('--time');            // 10:00
 const CONFIRM = process.argv.includes('--confirm');
-const SHOT = arg('--shot', '$HOME/reels/gate.png');
+// ภาพหลักฐานตอนถึงด่านตรวจ — เก็บไว้ให้ดูย้อนหลังว่าหน้าตาตอนนั้นเป็นยังไง
+const SHOT = arg('--shot', require('path').join(require('os').homedir(), 'fb-hub/logs/reel-schedule-gate.png'));
 
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
                    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -26,6 +27,12 @@ const TH_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค
                   'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 const die = (m) => { console.log('FAIL: ' + m); process.exit(1); };
+
+// อ่านไฟล์ caption หลังตรวจ arg แล้วเท่านั้น — ไม่งั้นไม่ใส่ --caption จะพ่น TypeError
+// แทนที่จะบอกว่าต้องใส่อะไร (คนใช้ครั้งแรกจะงงมาก)
+if (!CAPTION_FILE) die('ต้องมี --caption <ไฟล์ข้อความ>');
+if (!fs.existsSync(CAPTION_FILE)) die('หาไฟล์แคปชั่นไม่เจอ: ' + CAPTION_FILE);
+const CAPTION = fs.readFileSync(CAPTION_FILE, 'utf8').trim();
 
 (async () => {
   if (!FILE || !DATE || !TIME) die('ต้องมี --file --caption --date --time');

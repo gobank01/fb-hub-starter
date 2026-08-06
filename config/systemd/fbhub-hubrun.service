@@ -1,0 +1,12 @@
+[Unit]
+Description=fb-hub: หยิบงานในคิวมาทำ
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+Environment=DISPLAY=:99
+WorkingDirectory=__HOME__
+ExecStart=__HOME__/fb-hub/bin/hub-run.sh
+StandardOutput=append:__HOME__/fb-hub/logs/hubrun.agent.log
+StandardError=append:__HOME__/fb-hub/logs/hubrun.agent.log

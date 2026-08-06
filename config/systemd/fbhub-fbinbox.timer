@@ -1,0 +1,10 @@
+[Unit]
+Description=ตัวจับเวลา fbinbox — ทุก 20 นาที
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=20min
+Unit=fbhub-fbinbox.service
+
+[Install]
+WantedBy=timers.target

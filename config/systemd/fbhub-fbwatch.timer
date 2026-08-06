@@ -1,0 +1,10 @@
+[Unit]
+Description=ตัวจับเวลา fbwatch — ทุก 30 นาที
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Unit=fbhub-fbwatch.service
+
+[Install]
+WantedBy=timers.target

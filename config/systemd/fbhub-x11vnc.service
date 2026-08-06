@@ -1,0 +1,14 @@
+[Unit]
+Description=fb-hub: ให้ดูจอ :99 ผ่าน VNC (เปิดเฉพาะ localhost ต้องต่อผ่าน ssh tunnel)
+After=fbhub-xvfb.service
+Requires=fbhub-xvfb.service
+
+[Service]
+User=__USER__
+# -localhost = ไม่รับจากเน็ตภายนอก ต้องมุดผ่าน ssh (ซึ่งใช้กุญแจอยู่แล้ว)
+ExecStart=/usr/bin/x11vnc -display :99 -forever -shared -localhost -rfbport 5900 -nopw -quiet
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

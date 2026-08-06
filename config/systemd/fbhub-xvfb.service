@@ -1,0 +1,14 @@
+[Unit]
+Description=fb-hub: จอเสมือน :99 (เครื่องไม่มีจอจริง)
+Before=fbhub-x11vnc.service
+
+[Service]
+User=__USER__
+# ล้าง lock ที่ค้างจาก Xvfb ตัวเก่าที่ตายไปแล้ว — แต่ถ้ายังมีตัวเป็น ๆ อยู่ ห้ามลบ
+ExecStartPre=/bin/sh -c 'pgrep -x Xvfb >/dev/null || rm -f /tmp/.X99-lock'
+ExecStart=/usr/bin/Xvfb :99 -screen 0 1440x900x24 -nolisten tcp
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

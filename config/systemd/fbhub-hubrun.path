@@ -1,0 +1,9 @@
+[Unit]
+Description=เฝ้าคิวงาน fb-hub/jobs — มีงานใหม่เมื่อไหร่ปลุก hubrun
+
+[Path]
+PathChanged=__HOME__/fb-hub/jobs
+Unit=fbhub-hubrun.service
+
+[Install]
+WantedBy=paths.target

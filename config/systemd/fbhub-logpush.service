@@ -1,0 +1,11 @@
+[Unit]
+Description=fb-hub: ส่ง log ขึ้น dashboard
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+WorkingDirectory=__HOME__
+ExecStart=/bin/bash -c 'source __HOME__/fb-hub/bin/load-env.sh; /usr/bin/python3 __HOME__/fb-hub/bin/log-push.py'
+StandardOutput=append:__HOME__/fb-hub/logs/logpush.agent.log
+StandardError=append:__HOME__/fb-hub/logs/logpush.agent.log

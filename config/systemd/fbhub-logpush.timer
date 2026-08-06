@@ -1,0 +1,10 @@
+[Unit]
+Description=ตัวจับเวลา logpush — ทุก 5 นาที
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Unit=fbhub-logpush.service
+
+[Install]
+WantedBy=timers.target

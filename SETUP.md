@@ -171,12 +171,12 @@ node ~/fb-hub/bin/fb-pending.js 7
 
 ### 5.3 ซ้อมตอบแบบไม่ส่งจริง ← **สำคัญที่สุด**
 
-ปิดตัวจับเวลาก่อน ไม่งั้นรอบปกติจะรันจริงระหว่างคุณซ้อม:
+วิธีที่ง่ายที่สุด (ปิดตัวจับเวลาให้เองด้วย):
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.fbhub.fbwatch.plist
+fbhub dry
 ```
 
-สร้างงานซ้อม:
+หรือสร้างงานซ้อมเองถ้าอยากแก้โจทย์:
 ```bash
 cat > ~/fb-hub/jobs/dry-$(date +%s).job <<'EOF'
 งาน: ทดสอบแบบ DRY RUN — ห้ามพิมพ์ ห้ามกดส่ง ห้ามกดถูกใจ เด็ดขาด
@@ -209,9 +209,9 @@ cat ~/fb-hub/jobs/dry-*.out
 
 ### 5.4 เปิดใช้จริง
 
-พอใจแล้วค่อยเปิดตัวจับเวลากลับ:
+พอใจแล้วค่อยเปิดกลับ:
 ```bash
-launchctl load ~/Library/LaunchAgents/com.fbhub.fbwatch.plist
+fbhub on
 ```
 
 ---
@@ -241,7 +241,7 @@ nano ~/fb-hub/config/post-notes.tsv
 
 แล้วเปิด:
 ```bash
-launchctl load ~/Library/LaunchAgents/com.fbhub.fbinbox.plist
+fbhub on
 ```
 
 ---
@@ -249,10 +249,10 @@ launchctl load ~/Library/LaunchAgents/com.fbhub.fbinbox.plist
 ## 8. ดูว่ามันทำอะไรไปบ้าง
 
 ```bash
-tail -20 ~/fb-hub/state/progress.log
+fbhub status
 ```
 ```bash
-cat ~/fb-hub/jobs/.status
+fbhub log 30
 ```
 
 อยากดูจากมือถือ → ทำหน้าเว็บ dashboard เพิ่ม (ดู `dashboard/README.md`)
@@ -276,5 +276,5 @@ cat ~/fb-hub/jobs/.status
 ## กฎที่ห้ามละเมิด
 
 1. **เครื่องเดียวเท่านั้นที่ทำงาน Facebook** — สองเครื่องพร้อมกัน = ตอบซ้ำคนเดียวกันบนโพสต์สาธารณะ
-2. **ซ้อมทุกครั้งที่แก้ `prompts/`** — และปิดตัวจับเวลาก่อนซ้อม
+2. **ซ้อมทุกครั้งที่แก้ `prompts/`** — `fbhub dry` แล้วค่อย `fbhub on`
 3. **อ่าน [LESSONS.md](LESSONS.md) ให้จบ** — ทุกข้อคือความเสียหายจริงที่เกิดมาแล้ว

@@ -1,0 +1,103 @@
+#!/bin/zsh
+# fbhub — คุมบอทด้วยคำสั่งเดียว ไม่ต้องจำ launchctl
+#   fbhub status | on | off | log | dry | chrome | queue
+setopt NULL_GLOB
+HUB="$HOME/fb-hub"
+AGENTS="$HOME/Library/LaunchAgents"
+JOBS="$HUB/jobs"
+PROGRESS="$HUB/state/progress.log"
+WATCHERS=(com.fbhub.fbwatch com.fbhub.fbinbox)
+
+running() { launchctl list 2>/dev/null | grep -q "$1" }
+
+case "${1:-status}" in
+
+status)
+  print -r -- "━━ fb-hub ━━"
+  for a in $WATCHERS; do
+    running "$a" && print -r -- "  ✅ ${a##*.}  เปิดอยู่" || print -r -- "  ⭕️ ${a##*.}  ปิดอยู่"
+  done
+
+  # Chrome ต้องเปิดพร้อมพอร์ต 9222 ไม่งั้นบอทต่อไม่ได้
+  if curl -s --max-time 2 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+    print -r -- "  ✅ chrome    พร้อม (พอร์ต 9222)"
+  else
+    print -r -- "  ❌ chrome    ไม่ได้เปิด — รัน: fbhub chrome"
+  fi
+
+  # เครื่องหลับ = งานไม่เดินตามเวลา เป็นสาเหตุอันดับหนึ่ง
+  [[ "$(pmset -g 2>/dev/null | awk '/^ *sleep/{print $2}')" == "0" ]] \
+    && print -r -- "  ✅ ไม่หลับ" \
+    || print -r -- "  ⚠️  เครื่องหลับได้ — sudo pmset -a sleep 0 disablesleep 1"
+
+  print -r --
+  local now=("$JOBS"/*.running)
+  (( ${#now} )) && print -r -- "กำลังทำ: ${now[1]:t:r}" || print -r -- "กำลังทำ: (ว่าง)"
+  local q=("$JOBS"/*.job)
+  print -r -- "คิวรอ: ${#q}"
+
+  if [[ -f "$PROGRESS" ]]; then
+    # grep -c คืน exit 1 ตอนนับได้ 0 — ต้องรับค่าใส่ตัวแปรก่อน ไม่งั้นบรรทัดแตกเป็นสอง
+    local today=$(date '+%F')
+    local n=$(grep -c "^$today.*\(SENT\|FOLLOWUP\)" "$PROGRESS" 2>/dev/null)
+    print -r -- "ตอบไปวันนี้: ${n:-0} คน"
+    local last=$(tail -1 "$PROGRESS" 2>/dev/null)
+    [[ -n "$last" ]] && print -r -- "ล่าสุด: ${last:0:100}"
+  fi
+  return 0
+  ;;
+
+on)
+  for a in $WATCHERS; do launchctl load "$AGENTS/$a.plist" 2>/dev/null && print -r -- "เปิด ${a##*.}"; done
+  "$0" status
+  ;;
+
+off)
+  # ปิดตัวจับเวลาเท่านั้น — งานที่กำลังรันอยู่ปล่อยให้จบเอง ไม่ตัดกลางคัน
+  for a in $WATCHERS; do launchctl unload "$AGENTS/$a.plist" 2>/dev/null && print -r -- "ปิด ${a##*.}"; done
+  local now=("$JOBS"/*.running)
+  (( ${#now} )) && print -r -- "⚠️  ยังมีงานรันค้างอยู่ (${now[1]:t:r}) — รอให้จบเอง อย่าฆ่ากลางคัน"
+  ;;
+
+log)   tail -${2:-30} "$PROGRESS" ;;
+queue) ls -1 "$JOBS"/*.job "$JOBS"/*.running 2>/dev/null | xargs -n1 basename 2>/dev/null || print -r -- "คิวว่าง" ;;
+
+chrome)
+  "$HUB/bin/chrome-bot.sh"
+  print -r -- "→ เช็คด้วยว่ายังล็อกอิน Facebook อยู่ และไม่ได้สวมร่างเพจ"
+  ;;
+
+dry)
+  # ซ้อมแบบไม่ส่งจริง — ปิดตัวจับเวลาก่อนเสมอ ไม่งั้นรอบปกติจะรันกฎใหม่ไปแล้ว
+  "$0" off >/dev/null
+  local f="$JOBS/dry-$(date +%s).job"
+  cat > "$f" <<'EOF'
+งาน: ทดสอบแบบ DRY RUN — ห้ามพิมพ์ ห้ามกดส่ง ห้ามกดถูกใจ เด็ดขาด
+
+ทำตาม ~/fb-hub/prompts/comment-watch.txt ทุกอย่าง ยกเว้น:
+- ข้ามขั้นกดถูกใจ / กดตอบกลับ / พิมพ์ / ส่ง / จด ทั้งหมด
+- แทนที่จะส่ง ให้เขียนข้อความที่จะตอบออกมาในรายงานเท่านั้น
+- ไม่ต้องหน่วงเวลา
+
+รายงานแบบนี้:
+RESULT: DRY <จำนวนคนที่จะตอบ>
+[โพสต์ url — สรุปเนื้อโพสต์ 1 บรรทัด]
+  - <ชื่อคน> พิมพ์ว่า "<คอมเมนต์เขา>"
+    จะตอบว่า: "<ข้อความที่ร่าง>"
+ท้ายสุด: มีคำถามที่ต้องให้เจ้าของเพจตอบเองไหม
+EOF
+  print -r -- "เข้าคิวแล้ว: ${f:t}  (ปิดตัวจับเวลาให้แล้ว)"
+  print -r -- "รอสักพักแล้วดูผล:  cat ${f:r}.out"
+  print -r -- "พอใจแล้วเปิดกลับ:  fbhub on"
+  ;;
+
+*)
+  print -r -- "fbhub status  — เปิดอยู่ไหม ตอบไปกี่คนแล้ววันนี้"
+  print -r -- "fbhub on      — เปิดบอท"
+  print -r -- "fbhub off     — ปิดบอท (งานที่รันอยู่ปล่อยให้จบเอง)"
+  print -r -- "fbhub log [n] — ดู log ย้อนหลัง n บรรทัด"
+  print -r -- "fbhub queue   — คิวงานตอนนี้"
+  print -r -- "fbhub chrome  — เปิด Chrome ใหม่"
+  print -r -- "fbhub dry     — ซ้อมแบบไม่ส่งจริง (ปิดตัวจับเวลาให้เอง)"
+  ;;
+esac

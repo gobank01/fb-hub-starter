@@ -19,6 +19,15 @@ chmod +x "$HUB"/bin/*.sh "$HUB"/bin/*.py 2>/dev/null || true
 [ -f "$HUB/config/voice.md" ]         || cp "$SRC/config/voice.md.example"       "$HUB/config/voice.md"
 touch "$HUB/state/progress.log" "$HUB/state/used-replies.txt"
 
+echo "▸ ทำให้เรียก fbhub ได้จากทุกที่"
+mkdir -p "$HOME/.local/bin"
+ln -sf "$HUB/bin/fbhub" "$HOME/.local/bin/fbhub"
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+     echo "  เพิ่ม ~/.local/bin ลง PATH แล้ว — เปิด terminal ใหม่หรือ source ~/.zshrc" ;;
+esac
+
 echo "▸ ติดตั้ง playwright-core"
 cd "$HUB" && cp "$SRC/package.json" . && npm install --silent
 
@@ -50,6 +59,9 @@ cat <<MSG
      node $HUB/bin/fb-recent.js 7      # ดูว่าหาโพสต์เจอไหม
      node $HUB/bin/fb-pending.js 7     # ดูว่าใครยังไม่ได้ตอบ
 
-อ่าน SETUP.md ต่อ — โดยเฉพาะหัวข้อ "ทดสอบแบบไม่ส่งจริง"
+เช็คสถานะได้ตลอดด้วย:
+     fbhub status
+
+อ่าน SOP.md ต่อ — ติ๊กไปทีละข้อ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MSG

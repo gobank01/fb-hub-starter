@@ -36,7 +36,7 @@ while true; do
     print -r -- "DONE ${b:t} $(date +%s) $(( $(date +%s) - start ))" > "$JOBS/.status"
 
     # งาน #quiet แจ้งเฉพาะตอนมีอะไรเกิดขึ้นจริง (กันเตือนทุก 30 นาทีตอนไม่มีงาน)
-    if (( quiet )) && [[ $code -eq 0 ]] && ! head -1 "$b.out" | grep -q 'RESULT: SENT'; then
+    if (( quiet )) && [[ $code -eq 0 ]] && ! head -1 "$b.out" | grep -qE 'RESULT: (SENT|LOGIN_LOST)'; then
       continue
     fi
     {

@@ -24,7 +24,8 @@ done
 echo "▸ แพ็กเกจพื้นฐาน + ฟอนต์ไทย + จอเสมือน"
 apt-get update -qq
 # fonts-thai-tlwg สำคัญ — ไม่มีแล้ว Facebook เรนเดอร์ภาษาไทยเป็นกล่องสี่เหลี่ยม
-apt-get install -y -qq curl gnupg ca-certificates git python3 \
+# zsh จำเป็น — สคริปต์ทุกตัวในรีโปนี้เขียนด้วย zsh (macOS มีมาให้ Linux ไม่มี)
+apt-get install -y -qq curl gnupg ca-certificates git python3 zsh \
                        xvfb x11vnc fonts-thai-tlwg fonts-noto-color-emoji
 
 echo "▸ Google Chrome"

@@ -6,6 +6,6 @@ After=network-online.target
 Type=oneshot
 User=__USER__
 WorkingDirectory=__HOME__
-ExecStart=/bin/bash -c 'source __HOME__/fb-hub/bin/load-env.sh; /usr/bin/python3 __HOME__/fb-hub/bin/log-push.py'
+ExecStart=/bin/zsh -c 'source __HOME__/fb-hub/bin/load-env.sh; /usr/bin/python3 __HOME__/fb-hub/bin/log-push.py'
 StandardOutput=append:__HOME__/fb-hub/logs/logpush.agent.log
 StandardError=append:__HOME__/fb-hub/logs/logpush.agent.log

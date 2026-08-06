@@ -69,7 +69,7 @@ systemd-analyze verify /etc/systemd/system/fbhub-*.{service,timer,path} 2>&1 | g
   echo "  ⚠ systemd บ่น — อ่านข้างบน" || echo "  ✓ systemd-analyze verify ผ่าน"
 
 # จอเสมือน + ตัวให้ดูหน้าจอ เปิดตลอด (ไม่ได้ยิงคอมเมนต์ ปลอดภัย)
-systemctl enable --now fbhub-xvfb.service fbhub-x11vnc.service >/dev/null 2>&1
+systemctl enable --now fbhub-xvfb.service fbhub-x11vnc.service fbhub-chrome.service >/dev/null 2>&1
 echo "  ✓ จอเสมือน :99 + VNC (localhost:5900) เปิดแล้ว"
 
 # เปิดเฉพาะตัวเฝ้าคิว ตัวจับเวลาที่ยิงคอมเมนต์จริงยังไม่เปิด (ใช้ fbhub on)

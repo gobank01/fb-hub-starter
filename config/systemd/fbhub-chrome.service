@@ -1,0 +1,15 @@
+[Unit]
+Description=fb-hub: เปิด Chrome ที่ล็อกอิน Facebook ไว้ (CDP 9222)
+After=fbhub-xvfb.service
+Requires=fbhub-xvfb.service
+
+[Service]
+User=__USER__
+Environment=DISPLAY=:99
+# ไม่ใช้ chrome-bot.sh เพราะมันจบทันทีที่ Chrome ขึ้น (systemd จะคิดว่าตาย)
+ExecStart=/usr/bin/google-chrome --remote-debugging-port=9222 --user-data-dir=__HOME__/chrome-bot --no-first-run --no-default-browser-check --disable-features=Translate
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

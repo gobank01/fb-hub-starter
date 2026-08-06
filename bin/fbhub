@@ -1,7 +1,50 @@
 #!/bin/zsh
-# fbhub — คุมบอทด้วยคำสั่งเดียว ไม่ต้องจำ launchctl
-#   fbhub status | on | off | log | dry | chrome | queue
+# fbhub — คุมบอทด้วยคำสั่งเดียว ใช้ได้ทั้งบนเครื่องบอทเองและจากเครื่องคุณ
+#   fbhub status | on | off | log | dry | chrome | queue | job | screen | shell
 setopt NULL_GLOB
+
+usage() {
+  print -r -- "fbhub status  — เปิดอยู่ไหม Chrome พร้อมไหม ตอบไปกี่คนวันนี้"
+  print -r -- "fbhub on      — เปิดบอท"
+  print -r -- "fbhub off     — ปิดบอท (งานที่รันอยู่ปล่อยให้จบเอง)"
+  print -r -- "fbhub log [n] — ดู log ย้อนหลัง n บรรทัด"
+  print -r -- "fbhub queue   — คิวงานตอนนี้"
+  print -r -- "fbhub chrome  — เปิด Chrome ใหม่"
+  print -r -- "fbhub dry     — ซ้อมแบบไม่ส่งจริง (ปิดตัวจับเวลาให้เอง)"
+  print -r --
+  print -r -- 'fbhub job "..."     — สั่งงานอะไรก็ได้เป็นภาษาไทย'
+  print -r -- "fbhub result <id>  — ดูผลงานที่สั่งไป"
+  print -r -- "fbhub shell        — ssh เข้าเครื่องบอท"
+  print -r -- "fbhub screen       — เปิดหน้าจอเครื่องบอท (VNC)"
+}
+
+# ── โหมดรีโมท: อยู่บนเครื่องคุณ ไม่ใช่เครื่องบอท → ส่งคำสั่งข้ามไปให้ ──
+# ตัดสินจาก ~/.fbhub-remote (สร้างโดย install-controller.sh) ที่เก็บ ssh host ไว้
+# คำสั่งเดิมทุกตัวใช้ได้เหมือนกันหมด ไม่ต้องจำสองชุด
+if [[ -f "$HOME/.fbhub-remote" && ! -d "$HOME/fb-hub" ]]; then
+  R=$(<"$HOME/.fbhub-remote"); R=${R//[[:space:]]/}
+  case "${1:-status}" in
+    help|-h|--help) usage; exit 0 ;;
+    shell)  exec ssh "$R" ;;
+    screen) exec open "vnc://${R#*@}" ;;
+    job)
+      [[ -z "$2" ]] && { print -r -- 'ใช้: fbhub job "สั่งอะไรก็ได้เป็นภาษาไทย"'; exit 1 }
+      # หย่อนไฟล์งานเข้าคิว แล้วให้ hub-run บนเครื่องนั้นหยิบไปทำ
+      # (ส่งผ่าน ssh ตรง ๆ ไม่ได้ — claude อ่าน Keychain ผ่าน ssh ไม่ถึง ต้องผ่านคิว)
+      local id="manual-$(date +%s)"
+      print -r -- "$2" | ssh -o ConnectTimeout=8 "$R" "cat > ~/fb-hub/jobs/$id.job"
+      print -r -- "ส่งงานให้ ${R} แล้ว: $id"
+      print -r -- "ดูผล:  fbhub result $id"
+      ;;
+    result)
+      [[ -z "$2" ]] && { print -r -- 'ใช้: fbhub result <job-id>'; exit 1 }
+      ssh -o ConnectTimeout=8 "$R" "cat ~/fb-hub/jobs/$2.out 2>/dev/null || print -r -- '(ยังทำไม่เสร็จ)'"
+      ;;
+    *) exec ssh -o ConnectTimeout=8 "$R" "\$HOME/fb-hub/bin/fbhub $@" ;;
+  esac
+  exit
+fi
+
 HUB="$HOME/fb-hub"
 AGENTS="$HOME/Library/LaunchAgents"
 JOBS="$HUB/jobs"
@@ -59,6 +102,21 @@ off)
   (( ${#now} )) && print -r -- "⚠️  ยังมีงานรันค้างอยู่ (${now[1]:t:r}) — รอให้จบเอง อย่าฆ่ากลางคัน"
   ;;
 
+job)
+  [[ -z "$2" ]] && { print -r -- 'ใช้: fbhub job "สั่งอะไรก็ได้เป็นภาษาไทย"'; exit 1 }
+  id="manual-$(date +%s)"
+  print -r -- "$2" > "$JOBS/$id.job"
+  print -r -- "เข้าคิวแล้ว: $id"
+  print -r -- "ดูผล:  fbhub result $id"
+  ;;
+
+result)
+  [[ -z "$2" ]] && { print -r -- 'ใช้: fbhub result <job-id>'; exit 1 }
+  [[ -f "$JOBS/$2.out" ]] && cat "$JOBS/$2.out" || print -r -- "(ยังทำไม่เสร็จ)"
+  ;;
+
+shell|screen) print -r -- "คุณอยู่บนเครื่องบอทอยู่แล้ว" ;;
+
 log)   tail -${2:-30} "$PROGRESS" ;;
 queue) ls -1 "$JOBS"/*.job "$JOBS"/*.running 2>/dev/null | xargs -n1 basename 2>/dev/null || print -r -- "คิวว่าง" ;;
 
@@ -92,12 +150,6 @@ EOF
   ;;
 
 *)
-  print -r -- "fbhub status  — เปิดอยู่ไหม ตอบไปกี่คนแล้ววันนี้"
-  print -r -- "fbhub on      — เปิดบอท"
-  print -r -- "fbhub off     — ปิดบอท (งานที่รันอยู่ปล่อยให้จบเอง)"
-  print -r -- "fbhub log [n] — ดู log ย้อนหลัง n บรรทัด"
-  print -r -- "fbhub queue   — คิวงานตอนนี้"
-  print -r -- "fbhub chrome  — เปิด Chrome ใหม่"
-  print -r -- "fbhub dry     — ซ้อมแบบไม่ส่งจริง (ปิดตัวจับเวลาให้เอง)"
+  usage
   ;;
 esac

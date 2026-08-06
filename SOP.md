@@ -86,6 +86,18 @@ git clone https://github.com/gobank01/fb-hub-starter.git
 cd fb-hub-starter && bash install.sh
 ```
 
+### ☐ 1.6b ลงตัวคุม — ทำบน **เครื่องคุณเอง** ไม่ใช่เครื่องบอท
+
+```bash
+cd fb-hub-starter && bash install-controller.sh
+```
+มันจะสแกนหาเครื่องที่เปิดทั้ง SSH และ Screen Sharing ให้ แล้วถามว่าจะคุมเครื่องไหน
+
+- [ ] `fbhub status` จากเครื่องคุณ ต้องเห็นสถานะเครื่องบอท
+- [ ] ถ้าถามรหัสทุกครั้ง → `ssh-copy-id <user>@<ip>` ครั้งเดียวจบ
+
+ตั้งแต่นี้ไปคำสั่งทุกตัวในเอกสารนี้ **พิมพ์จากเครื่องคุณได้เลย** ไม่ต้อง ssh เข้าไปก่อน
+
 ### ☐ 1.7 ใส่ข้อมูลตัวเอง
 
 ```bash
@@ -141,7 +153,7 @@ fbhub on
 ## ทุกวัน (2 นาที)
 
 ```bash
-ssh fbhub fbhub status
+fbhub status
 ```
 
 ดู 3 อย่าง:

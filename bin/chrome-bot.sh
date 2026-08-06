@@ -1,13 +1,35 @@
 #!/bin/bash
-# Launch the mini's Chrome with a dedicated bot profile + CDP on port 9222.
-# Runs inside the GUI session (called from a hub job), so a real window appears.
+# Launch the bot's Chrome with a dedicated profile + CDP on port 9222.
+# macOS: real window in the GUI session.  Linux/VPS: Xvfb virtual screen.
 PORT=9222
+
+# ponytail: หา Chrome ตัวแรกที่มีจริง แทนที่จะ if uname — ครอบทั้ง mac/ubuntu/debian
+CHROME=""
+for c in "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+         google-chrome google-chrome-stable chromium chromium-browser; do
+  if [ -x "$c" ] || command -v "$c" >/dev/null 2>&1; then CHROME="$c"; break; fi
+done
+# --which = ตัวตรวจของไฟล์นี้ ต้องมาก่อนเช็คพอร์ต ไม่งั้นโดน already-running ดักจนตรวจไม่ได้
+[ "$1" = "--which" ] && { echo "${CHROME:-ไม่เจอ Chrome}"; [ -n "$CHROME" ]; exit $?; }
+if [ -z "$CHROME" ]; then
+  echo "chrome-bot: หา Chrome ไม่เจอ — ลง Google Chrome ก่อน (Linux: apt install ./google-chrome-stable_current_amd64.deb)"
+  exit 1
+fi
+
 if curl -s --max-time 2 "http://127.0.0.1:$PORT/json/version" >/dev/null 2>&1; then
   echo "chrome-bot: already running"
   exit 0
 fi
 
-"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+# VPS ไม่มีจอจริง → ยืมจอเสมือน (ต้อง apt install xvfb)
+XVFB=""
+if [ "$(uname)" = "Linux" ] && [ -z "$DISPLAY" ]; then
+  command -v xvfb-run >/dev/null 2>&1 || {
+    echo "chrome-bot: Linux ไม่มี DISPLAY และไม่มี xvfb-run — apt install xvfb"; exit 1; }
+  XVFB="xvfb-run -a --server-args=-screen 0 1440x900x24"
+fi
+
+$XVFB "$CHROME" \
   --remote-debugging-port="$PORT" \
   --user-data-dir="$HOME/chrome-bot" \
   --no-first-run --no-default-browser-check \

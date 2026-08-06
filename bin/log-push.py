@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-# ยิงสรุปสถานะบอทตอบคอมเมนต์ขึ้นเว็บ os.environ['DASHBOARD_URL'] ทุก 5 นาที
-# Vercel เข้าถึงเครื่องนี้ตรง ๆ ไม่ได้ (อยู่หลัง Tailscale) มินิจึงต้องเป็นฝ่ายยิงออก
+# ยิงสรุปสถานะบอทขึ้นเว็บ dashboard ทุก 5 นาที
+#
+# เว็บข้างนอกเข้าถึงเครื่องนี้ตรง ๆ ไม่ได้ (อยู่หลังเราเตอร์) เครื่องจึงต้องเป็นฝ่ายยิงออก
+# ไม่ได้ตั้ง DASHBOARD_URL = ไม่ทำ dashboard = จบเงียบ ๆ ไม่ใช่ error
 import json, os, pathlib, re, urllib.request
 from datetime import datetime
+
+# dashboard เป็นของเสริม ไม่ทำก็ได้ — ไม่ได้ตั้งค่าไว้ก็ออกเงียบ ๆ ไม่ต้องรก log ทุก 5 นาที
+URL = os.environ.get('DASHBOARD_URL', '').strip().rstrip('/')
+SECRET = os.environ.get('FB_LOG_SECRET', '').strip()
+if not URL or not SECRET:
+    raise SystemExit(0)
 
 H = pathlib.Path.home()
 JOBS, LOGS = H / 'fb-hub/jobs', H / 'fb-hub/logs'
@@ -44,8 +52,8 @@ snap = {
 }
 
 req = urllib.request.Request(
-    'os.environ['DASHBOARD_URL']/api/push',
+    URL + '/api/push',
     data=json.dumps(snap, ensure_ascii=False).encode(),
-    headers={'Content-Type': 'application/json', 'x-secret': os.environ.get('FB_LOG_SECRET', '')},
+    headers={'Content-Type': 'application/json', 'x-secret': SECRET},
     method='POST')
 print(urllib.request.urlopen(req, timeout=25).read().decode())

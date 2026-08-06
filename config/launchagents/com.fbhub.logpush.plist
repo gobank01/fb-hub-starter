@@ -6,7 +6,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string><string>-c</string>
-    <string>set -a; source $HOME/fb-hub/.env; set +a; /usr/bin/python3 $HOME/fb-hub/bin/log-push.py</string>
+    <string>source $HOME/fb-hub/bin/load-env.sh; /usr/bin/python3 $HOME/fb-hub/bin/log-push.py</string>
   </array>
   <key>StartInterval</key><integer>300</integer>
   <key>RunAtLoad</key><true/>

@@ -16,6 +16,7 @@ usage() {
   print -r -- "fbhub result <id>  — ดูผลงานที่สั่งไป"
   print -r -- "fbhub shell        — ssh เข้าเครื่องบอท"
   print -r -- "fbhub screen       — เปิดหน้าจอเครื่องบอท (VNC)"
+  print -r -- "fbhub dashboard    — ตั้งค่า/ทดสอบเว็บดู log จากมือถือ (ของเสริม)"
 }
 
 # ── โหมดรีโมท: อยู่บนเครื่องคุณ ไม่ใช่เครื่องบอท → ส่งคำสั่งข้ามไปให้ ──
@@ -116,6 +117,22 @@ result)
   ;;
 
 shell|screen) print -r -- "คุณอยู่บนเครื่องบอทอยู่แล้ว" ;;
+
+dashboard)
+  # ตั้งค่า/ทดสอบการยิงขึ้นเว็บ dashboard — ของเสริม ไม่ทำก็ได้
+  source "$HUB/bin/load-env.sh"
+  if [[ -z "$DASHBOARD_URL" || -z "$FB_LOG_SECRET" ]]; then
+    print -r -- "ยังไม่ได้ตั้ง dashboard — เติม 2 บรรทัดนี้ใน ~/fb-hub/.env:"
+    print -r -- "  DASHBOARD_URL=https://<ของคุณ>.vercel.app"
+    print -r -- "  FB_LOG_SECRET=<ตัวเดียวกับ PUSH_SECRET บน Vercel>"
+    print -r -- ""
+    print -r -- "วิธี deploy อ่านที่ dashboard/README.md ในรีโป"
+    print -r -- "(ไม่ทำก็ได้ ระบบทำงานปกติ ดู log ด้วย fbhub log แทน)"
+    exit 1
+  fi
+  print -r -- "ยิงขึ้น $DASHBOARD_URL ..."
+  /usr/bin/python3 "$HUB/bin/log-push.py" && print -r -- "✅ สำเร็จ เปิดดูได้ที่ $DASHBOARD_URL"
+  ;;
 
 log)   tail -${2:-30} "$PROGRESS" ;;
 queue) ls -1 "$JOBS"/*.job "$JOBS"/*.running 2>/dev/null | xargs -n1 basename 2>/dev/null || print -r -- "คิวว่าง" ;;

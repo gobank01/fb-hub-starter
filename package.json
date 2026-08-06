@@ -1,0 +1,7 @@
+{
+  "name": "fb-hub-starter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "เครื่องแยกสำหรับดูแล Facebook — คอมเมนต์ / อินบ็อกซ์ / โพสต์ อัตโนมัติ",
+  "dependencies": { "playwright-core": "^1.49.0" }
+}

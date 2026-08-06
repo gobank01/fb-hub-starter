@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.fbhub.logpush</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string><string>-c</string>
+    <string>set -a; source $HOME/fb-hub/.env; set +a; /usr/bin/python3 $HOME/fb-hub/bin/log-push.py</string>
+  </array>
+  <key>StartInterval</key><integer>300</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>$HOME/fb-hub/logs/log-push.log</string>
+  <key>StandardErrorPath</key><string>$HOME/fb-hub/logs/log-push.log</string>
+</dict>
+</plist>

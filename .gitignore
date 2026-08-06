@@ -1,0 +1,9 @@
+node_modules
+.next
+.env
+.env*.local
+state/
+logs/
+jobs/
+config/post-notes.tsv
+config/voice.md

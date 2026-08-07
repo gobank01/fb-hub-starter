@@ -1,0 +1,14 @@
+[Unit]
+Description=fb-hub: ตัวจัดการหน้าต่าง (ไม่มีตัวนี้ = คลิก/พิมพ์ผ่าน VNC ไม่เข้า)
+After=fbhub-xvfb.service
+Requires=fbhub-xvfb.service
+
+[Service]
+User=__USER__
+Environment=DISPLAY=:99
+ExecStart=/usr/bin/openbox
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -52,7 +52,19 @@ JOBS="$HUB/jobs"
 PROGRESS="$HUB/state/progress.log"
 WATCHERS=(com.fbhub.fbwatch com.fbhub.fbinbox)
 
-running() { launchctl list 2>/dev/null | grep -q "$1" }
+# Linux ใช้ systemd timer แทน launchd — ชื่อ unit คนละแบบกับ plist
+IS_LINUX=0
+[[ "$(uname)" == "Linux" ]] && { IS_LINUX=1; WATCHERS=(fbhub-fbwatch fbhub-fbinbox) }
+
+running() {
+  if (( IS_LINUX )); then
+    systemctl is-active --quiet "$1.timer" 2>/dev/null || systemctl is-active --quiet "$1" 2>/dev/null
+  else
+    launchctl list 2>/dev/null | grep -q "$1"
+  fi
+}
+watcher_on()  { (( IS_LINUX )) && sudo systemctl enable --now "$1.timer" 2>/dev/null || launchctl load   "$AGENTS/$1.plist" 2>/dev/null }
+watcher_off() { (( IS_LINUX )) && sudo systemctl disable --now "$1.timer" 2>/dev/null || launchctl unload "$AGENTS/$1.plist" 2>/dev/null }
 
 case "${1:-status}" in
 
@@ -77,10 +89,14 @@ status)
     print -r -- "  ❌ playwright   ยังไม่ได้ติดตั้ง — รัน: cd ~/fb-hub && npm install"
   fi
 
-  # เครื่องหลับ = งานไม่เดินตามเวลา เป็นสาเหตุอันดับหนึ่ง
-  [[ "$(pmset -g 2>/dev/null | awk '/^ *sleep/{print $2}')" == "0" ]] \
-    && print -r -- "  ✅ ไม่หลับ" \
-    || print -r -- "  ⚠️  เครื่องหลับได้ — sudo pmset -a sleep 0 disablesleep 1"
+  # เครื่องหลับ = งานไม่เดินตามเวลา เป็นสาเหตุอันดับหนึ่ง (เซิร์ฟเวอร์ Linux ไม่หลับอยู่แล้ว)
+  if (( IS_LINUX )); then
+    print -r -- "  ✅ ไม่หลับ (เซิร์ฟเวอร์)"
+  else
+    [[ "$(pmset -g 2>/dev/null | awk '/^ *sleep/{print $2}')" == "0" ]] \
+      && print -r -- "  ✅ ไม่หลับ" \
+      || print -r -- "  ⚠️  เครื่องหลับได้ — sudo pmset -a sleep 0 disablesleep 1"
+  fi
 
   print -r --
   local now=("$JOBS"/*.running)
@@ -100,13 +116,13 @@ status)
   ;;
 
 on)
-  for a in $WATCHERS; do launchctl load "$AGENTS/$a.plist" 2>/dev/null && print -r -- "เปิด ${a##*.}"; done
+  for a in $WATCHERS; do watcher_on  "$a" && print -r -- "เปิด ${a##*.}"; done
   "$0" status
   ;;
 
 off)
   # ปิดตัวจับเวลาเท่านั้น — งานที่กำลังรันอยู่ปล่อยให้จบเอง ไม่ตัดกลางคัน
-  for a in $WATCHERS; do launchctl unload "$AGENTS/$a.plist" 2>/dev/null && print -r -- "ปิด ${a##*.}"; done
+  for a in $WATCHERS; do watcher_off "$a" && print -r -- "ปิด ${a##*.}"; done
   local now=("$JOBS"/*.running)
   (( ${#now} )) && print -r -- "⚠️  ยังมีงานรันค้างอยู่ (${now[1]:t:r}) — รอให้จบเอง อย่าฆ่ากลางคัน"
   ;;

@@ -19,17 +19,19 @@ fi
 : ${MAX_PER_ROUND:=10}
 : ${MIN_GAP:=70}
 : ${MAX_GAP:=170}
+: ${REPLY_PARTICLE:=ครับ}
 
 sed -e "s|{{OWNER}}|$OWNER|g" \
     -e "s|{{FB_NAME}}|$FB_NAME|g" \
     -e "s|{{MAX_PER_ROUND}}|$MAX_PER_ROUND|g" \
     -e "s|{{MIN_GAP}}|$MIN_GAP|g" \
-    -e "s|{{MAX_GAP}}|$MAX_GAP|g" "$SRC"
+    -e "s|{{MAX_GAP}}|$MAX_GAP|g" \
+    -e "s|{{REPLY_PARTICLE}}|$REPLY_PARTICLE|g" "$SRC"
 
 # เหลือ {{...}} = มี placeholder ตัวใหม่ที่ยังไม่ได้รองรับ ต้องส่งเสียง ไม่ใช่ปล่อยผ่าน
 if grep -q '{{[A-Z_]*}}' "$SRC" && \
    sed -e "s|{{OWNER}}||g" -e "s|{{FB_NAME}}||g" -e "s|{{MAX_PER_ROUND}}||g" \
-       -e "s|{{MIN_GAP}}||g" -e "s|{{MAX_GAP}}||g" "$SRC" | grep -q '{{[A-Z_]*}}'; then
+       -e "s|{{MIN_GAP}}||g" -e "s|{{MAX_GAP}}||g" -e "s|{{REPLY_PARTICLE}}||g" "$SRC" | grep -q '{{[A-Z_]*}}'; then
   print -u2 -r -- "⚠️  ยังมี placeholder ที่แทนไม่ได้ใน $SRC:"
   grep -ohE '\{\{[A-Z_]+\}\}' "$SRC" | sort -u | sed 's/^/    /' >&2
 fi

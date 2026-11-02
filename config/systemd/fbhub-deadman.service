@@ -1,0 +1,10 @@
+[Unit]
+Description=fb-hub: ตัวเฝ้างานที่ไม่เกิด (บอทเงียบ/ค้าง/Chrome ดับ/ดิสก์เต็ม)
+
+[Service]
+Type=oneshot
+User=__USER__
+WorkingDirectory=__HOME__
+ExecStart=/usr/bin/python3 __HOME__/fb-hub/bin/fb-deadman.py
+StandardOutput=append:__HOME__/fb-hub/logs/deadman.agent.log
+StandardError=append:__HOME__/fb-hub/logs/deadman.agent.log

@@ -50,11 +50,11 @@ HUB="$HOME/fb-hub"
 AGENTS="$HOME/Library/LaunchAgents"
 JOBS="$HUB/jobs"
 PROGRESS="$HUB/state/progress.log"
-WATCHERS=(com.fbhub.fbwatch com.fbhub.fbinbox)
+WATCHERS=(com.fbhub.fbwatch)
 
 # Linux ใช้ systemd timer แทน launchd — ชื่อ unit คนละแบบกับ plist
 IS_LINUX=0
-[[ "$(uname)" == "Linux" ]] && { IS_LINUX=1; WATCHERS=(fbhub-fbwatch fbhub-fbinbox) }
+[[ "$(uname)" == "Linux" ]] && { IS_LINUX=1; WATCHERS=(fbhub-fbwatch) }
 
 running() {
   if (( IS_LINUX )); then

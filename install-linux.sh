@@ -45,7 +45,9 @@ chmod +x "$HUB"/bin/*.sh "$HUB"/bin/*.py "$HUB"/bin/fbhub 2>/dev/null || true
 [ -f "$HUB/.env" ]                  || cp "$SRC/.env.example"                  "$HUB/.env"
 [ -f "$HUB/config/post-notes.tsv" ] || cp "$SRC/config/post-notes.tsv.example" "$HUB/config/post-notes.tsv"
 [ -f "$HUB/config/voice.md" ]       || cp "$SRC/config/voice.md.example"       "$HUB/config/voice.md"
-touch "$HUB/state/progress.log" "$HUB/state/used-replies.txt"
+[ -f "$HUB/config/no-reply.txt" ]     || cp "$SRC/config/no-reply.txt.example"     "$HUB/config/no-reply.txt"
+[ -f "$HUB/config/banned-words.txt" ] || cp "$SRC/config/banned-words.txt.example" "$HUB/config/banned-words.txt"
+touch "$HUB/state/progress.log" "$HUB/state/replies.tsv"
 
 echo "▸ เรียก fbhub ได้จากทุกที่"
 mkdir -p "$HOME_DIR/.local/bin"
@@ -57,6 +59,10 @@ echo "▸ ติดตั้ง playwright-core"
 cp "$SRC/package.json" "$HUB/"
 chown -R "$BOT_USER:$BOT_USER" "$HOME_DIR"
 su - "$BOT_USER" -c "cd '$HUB' && npm install --silent"
+
+echo "▸ ต่อ Claude เข้ากับ Chrome ของบอท (Playwright MCP)"
+su - "$BOT_USER" -c "claude mcp remove playwright --scope user >/dev/null 2>&1; claude mcp add playwright --scope user -- npx -y @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222" \
+  && echo "  ✓ playwright MCP" || echo "  ⚠ ลงไม่สำเร็จ — รันเองทีหลังในชื่อ $BOT_USER: claude mcp add playwright --scope user -- npx -y @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222"
 
 # ─── ตัวจับเวลา ──────────────────────────────────────────────────
 echo "▸ ตั้งตัวจับเวลา (systemd)"
@@ -73,9 +79,9 @@ systemctl enable --now fbhub-xvfb.service fbhub-x11vnc.service fbhub-chrome.serv
 echo "  ✓ จอเสมือน :99 + VNC (localhost:5900) เปิดแล้ว"
 
 # เปิดเฉพาะตัวเฝ้าคิว ตัวจับเวลาที่ยิงคอมเมนต์จริงยังไม่เปิด (ใช้ fbhub on)
-systemctl enable --now fbhub-hubrun.path >/dev/null 2>&1
-echo "  ✓ fbhub-hubrun.path (คิวงาน) เปิดแล้ว"
-echo "  · fbwatch/fbinbox/logpush ยังไม่เปิด — สั่ง 'fbhub on' เมื่อพร้อม"
+systemctl enable --now fbhub-hubrun.path fbhub-deadman.timer >/dev/null 2>&1
+echo "  ✓ fbhub-hubrun.path (คิวงาน) + fbhub-deadman.timer (ตัวเฝ้า) เปิดแล้ว"
+echo "  · fbwatch/logpush ยังไม่เปิด — สั่ง 'fbhub on' เมื่อพร้อม"
 
 grep -q "DISPLAY=:99" "$HOME_DIR/.bashrc" 2>/dev/null || \
   echo 'export DISPLAY=:99' >> "$HOME_DIR/.bashrc"
@@ -83,11 +89,12 @@ grep -q "DISPLAY=:99" "$HOME_DIR/.bashrc" 2>/dev/null || \
 cat <<MSG
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-ติดตั้งเสร็จ เหลืออีก 3 อย่างที่ต้องทำเอง (ในนาม $BOT_USER):
+ติดตั้งเสร็จ เหลืออีก 4 อย่างที่ต้องทำเอง (ในนาม $BOT_USER):
 
-  1. แก้ $HUB/.env            ← FB_HANDLE / FB_NAME / OWNER
-  2. แก้ $HUB/config/voice.md ← วางคอมเมนต์เก่าของตัวเอง 10-20 อัน
-  3. ล็อกอิน Facebook (เครื่องนี้ไม่มีจอ ต้องดูผ่าน VNC):
+  1. แก้ $HUB/.env            ← FB_HANDLE / FB_NAME / OWNER / REPLY_PARTICLE / คีย์ Telegram
+  2. แก้ $HUB/config/voice.md ← เล่าน้ำเสียงของคุณ
+  3. ทดสอบแจ้งเตือน:  su - $BOT_USER -c 'python3 ~/fb-hub/bin/notify.py --test'
+  4. ล็อกอิน Facebook (เครื่องนี้ไม่มีจอ ต้องดูผ่าน VNC):
          su - $BOT_USER -c 'bash ~/fb-hub/bin/chrome-bot.sh'
          x11vnc -display :99 -localhost -nopw     # แล้วต่อผ่าน Tailscale/ssh -L 5900
 

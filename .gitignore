@@ -7,3 +7,6 @@ logs/
 jobs/
 config/post-notes.tsv
 config/voice.md
+config/no-reply.txt
+config/banned-words.txt
+__pycache__/

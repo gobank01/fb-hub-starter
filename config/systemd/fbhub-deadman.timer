@@ -1,0 +1,10 @@
+[Unit]
+Description=ตัวจับเวลา deadman — ทุก 30 นาที
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=30min
+Unit=fbhub-deadman.service
+
+[Install]
+WantedBy=timers.target

@@ -14,6 +14,7 @@
 //   · เช็กโควตาก่อนทุกอัน · ส่งสำเร็จจด progress.log ทันที ไม่รอสรุปตอนจบ
 //   · ส่งแล้วลบร่างออกจากไฟล์ทันที — ไม่งั้นตัวจับเวลาเห็นร่างค้าง แล้วหยุดทั้งระบบเงียบ ๆ (ต้นแบบค้าง 37 ชม.)
 //   · ห้ามแตะเมนู "..." ข้างคอมเมนต์ — มีปุ่มซ่อน/รายงาน
+require("./env.js");
 const { chromium } = require("playwright-core");
 const fs = require("fs");
 const { execFileSync } = require("child_process");
@@ -32,7 +33,38 @@ const SHOPEE = /^https:\/\/(s\.shopee\.co\.th|shope\.ee|shopee\.co\.th)\/\S+$/;
 const MIN_GAP = +(process.env.MIN_GAP || 70), MAX_GAP = +(process.env.MAX_GAP || 170);
 
 if (!/^\d+$/.test(GID || "") || !FILE) { console.error("ใช้: node fb-group-comment.js <groupId> <drafts.json> [--dry]"); process.exit(2); }
-if (!FULL) { console.error("ยังไม่ได้ตั้ง FB_NAME ใน ~/fb-hub/.env"); process.exit(2); }
+if (!FULL) { console.error("ยังไม่ได้ตั้ง FB_NAME ใน ~/fb-hub/.env (ชื่อบัญชี Facebook ตามที่โชว์บนโปรไฟล์)"); process.exit(2); }
+
+// ชื่อที่ยอมให้โผล่ในป้ายกล่องคอมเมนต์ — ในกลุ่ม FB มักโชว์แค่ชื่อต้น ("แสดงความคิดเห็นในชื่อ Joe")
+// ซ้อมบนเครื่องจริงแล้ว: เช็กแต่ชื่อเต็ม = ABORT ทุกรอบ ส่งได้ 0 · ตั้งชื่อที่โชว์เองได้ด้วย FB_GROUP_NAME
+const NAMES = [...new Set([FULL, FULL.split(/\s+/)[0], (process.env.FB_GROUP_NAME || "").trim()].filter(Boolean))];
+// ตัดชื่อหลัง "ในชื่อ" / "as" ออกมาเทียบ "ทั้งคำ" — includes เฉย ๆ จะยอมเพจชื่อ "Joe Shop" ด้วย
+function identityOk(label) {
+  const m = String(label || "").match(/(?:ในชื่อ|ตอบในชื่อ|as)\s+(.+?)\s*(?:…|\.\.\.)?$/i);
+  if (!m) return false;                       // ป้ายไม่บอกชื่อ = ยืนยันตัวตนไม่ได้ → ไม่ส่ง
+  return NAMES.includes(m[1].trim());
+}
+// หยุดทั้งรอบ: ย้ายร่างออกไปเก็บ (ไม่งั้นรอบหน้าหยิบร่างเดิมมา ABORT ซ้ำจนหมดอายุ 12 ชม.) + เตือนครั้งเดียว
+function abortRound(tag, why, notifyKey) {
+  jot(`ABORT ${tag} — ${why}`);
+  try {
+    const keep = FILE.replace(/\.json$/, "") + `-aborted-${stamp().replace(/\D/g, "")}.json`;
+    fs.renameSync(FILE, keep);
+    jot(`ย้ายร่างที่ยังไม่ส่งไปเก็บที่ ${keep.split("/").pop()} — รอบหน้าสแกนใหม่`);
+  } catch (e) { jot(`⚠️ ย้ายร่างไม่สำเร็จ — ${e.message}`); }
+  try { execFileSync("python3", [`${HUB}/bin/notify-once.py`, notifyKey, `⚠️ fb-hub กลุ่ม: ${why}`]); } catch (e) {}
+}
+if (process.argv.includes("--demo")) {
+  const t = (l) => identityOk(l);
+  require("assert").ok(t(`แสดงความคิดเห็นในชื่อ ${FULL}`), "ชื่อเต็มต้องผ่าน");
+  require("assert").ok(t(`แสดงความคิดเห็นในชื่อ ${NAMES[1]}`), "ชื่อต้นต้องผ่าน");
+  require("assert").ok(t(`Comment as ${NAMES[1]}`), "ภาษาอังกฤษต้องผ่าน");
+  require("assert").ok(!t(`แสดงความคิดเห็นในชื่อ ${NAMES[1]} Shop`), "เพจที่ขึ้นต้นด้วยชื่อเราต้องไม่ผ่าน");
+  require("assert").ok(!t("แสดงความคิดเห็นในชื่อ เพจอื่น"), "ชื่ออื่นต้องไม่ผ่าน");
+  require("assert").ok(!t("เขียนความคิดเห็น…"), "ป้ายไม่มีชื่อต้องไม่ผ่าน");
+  console.log("✅ fb-group-comment identity demo — ยอมรับ: " + NAMES.join(" / "));
+  process.exit(0);
+}
 
 // เวลาเครื่อง "YYYY-MM-DD HH:MM:SS" — toISOString() เป็น UTC + .268Z ทำให้ fb-quota.py นับไม่ได้ (บั๊กจริงของต้นแบบ)
 const stamp = () => {
@@ -79,7 +111,10 @@ const findBox = () => [...document.querySelectorAll('div[contenteditable="true"]
       if (!gate.label) { jot(`SKIP ${tag} — หากล่องคอมเมนต์ไม่เจอ`); continue; }
       if (!gate.inModal) { jot(`SKIP ${tag} — โพสต์ไม่ได้เปิดใน modal อ่านบริบทไม่ชัวร์`); continue; }
       // ป้ายกล่องต้องมีชื่อเรา — ไม่งั้นกำลังจะคอมเมนต์ในนามเพจ/คนอื่น หยุดทั้งรอบ
-      if (!gate.label.includes(FULL)) { jot(`ABORT ${tag} — จะคอมเมนต์ในชื่อ "${gate.label}" ไม่ใช่ ${FULL} (สลับตัวตนที่อวตารขวาบนก่อน)`); break; }
+      if (!identityOk(gate.label)) {
+        abortRound(tag, `จะคอมเมนต์ในชื่อ "${gate.label}" ไม่ใช่ ${NAMES.join(" / ")} — สลับตัวตนที่อวตารขวาบน หรือตั้ง FB_GROUP_NAME ใน .env ให้ตรงชื่อที่กลุ่มโชว์`, "group-identity");
+        break;
+      }
       if (gate.mine > 0) {
         fs.appendFileSync(DONE, `${it.id}\t${stamp()}\t(มีคอมเมนต์ของเราอยู่แล้ว)\n`);
         jot(`SKIP ${tag} — มีคอมเมนต์ของ ${FULL} ในโพสต์แล้ว`); continue;
@@ -116,7 +151,7 @@ const findBox = () => [...document.querySelectorAll('div[contenteditable="true"]
       // --- ตรวจก่อนส่ง ---
       const typed = await page.evaluate((lb) => document.querySelector(`div[contenteditable="true"][aria-label="${lb}"]`).innerText, gate.label);
       const missing = lines.filter((L) => L && !typed.includes(L.slice(0, 40)));
-      if (missing.length) { jot(`ABORT ${tag} — ข้อความเข้าไม่ครบ ขาด ${missing.length}/${lines.length} บรรทัด ไม่กดส่ง`); break; }
+      if (missing.length) { abortRound(tag, `ข้อความเข้าไม่ครบ ขาด ${missing.length}/${lines.length} บรรทัด ไม่กดส่ง (หน้าเว็บอาจเปลี่ยน)`, "group-typing"); break; }
 
       await page.keyboard.press("Enter");
       await wait(6000);

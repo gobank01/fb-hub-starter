@@ -8,6 +8,7 @@
 //
 // กันตอบซ้ำ 2 ชั้น: ledger ~/fb-hub/state/group-done.tsv + เจอชื่อเรา (FB_NAME) ในหน้าโพสต์ก็ข้าม
 // (ค้นในหน้าอย่างเดียวเชื่อไม่ได้ — FB เรียง "เกี่ยวข้องมากที่สุด" แล้วไม่โหลดคอมเมนต์ใหม่มา)
+require("./env.js");
 const { chromium } = require("playwright-core");
 const fs = require("fs");
 const path = require("path");

@@ -12,7 +12,8 @@
   4. Chrome ไม่ตอบที่พอร์ต 9222
   5. ดิสก์เหลือ < 10% — เต็มแล้ว Chrome/log/คิวพังพร้อมกัน
   6. ฝั่งกลุ่ม: รอบคอมเมนต์กลุ่มล่าสุด exit ≠ 0 · ตัวจับเวลากลุ่มเปิดอยู่แต่ log ไม่ขยับเกิน 60 นาที
-  7. ช่องแจ้งเตือนยังไม่ได้ตั้ง (ตรวจนี้พิมพ์ออกจอเท่านั้น เพราะส่งไม่ได้อยู่แล้ว)
+  7. ซ้อม group-dry เสร็จเกิน 6 ชม. แล้วตัวจับเวลากลุ่มยังปิด (ลืม fbhub on) — เตือนแค่ 3 วันหลังซ้อม
+  8. ช่องแจ้งเตือนยังไม่ได้ตั้ง (ตรวจนี้พิมพ์ออกจอเท่านั้น เพราะส่งไม่ได้อยู่แล้ว)
 
 เตือนผ่าน notify-once (เรื่องเดิมครั้งเดียวทุก 6 ชม.) · ถ้าปิดบอทอยู่ (fbhub off) ข้อ 1 จะไม่เตือน
 
@@ -28,6 +29,7 @@ LOG = os.path.join(HUB, "logs/deadman.log")
 STALE_MIN = 120
 RUNNING_MIN = 120
 GROUP_LOG = os.path.join(HUB, "logs/fb-group-watch.log")
+DRY_REMIND_H = (6, 72)      # ซ้อมเสร็จแล้ว 6 ชม.–3 วัน ตัวจับเวลากลุ่มยังปิด = เตือน (เกิน 3 วัน = ถือว่าตั้งใจปิด)
 GROUP_LOG_MIN = 90          # ตัวจับเวลากลุ่มเช็กทุก 10 นาที จด log อย่างน้อยชั่วโมงละครั้ง — เงียบ 90 นาที = ตาย
 
 
@@ -73,6 +75,13 @@ def problems(now, jobs_dir=JOBS, watching=True, chrome=True, disk_free=1.0, grou
         out.append((f"fbgroup exit {last_exit(gdone[-1])}", "⚠️ fb-hub: รอบคอมเมนต์กลุ่มล่าสุดจบแบบผิดพลาด — ดู " + os.path.basename(gdone[-1])[:-5] + ".out"))
     if group_watching and os.path.exists(group_log) and (now - os.path.getmtime(group_log)) / 60 > GROUP_LOG_MIN:
         out.append(("fbgroup เงียบ", f"⚠️ fb-hub: ตัวจับเวลากลุ่มเปิดอยู่แต่ไม่ขยับเกิน {GROUP_LOG_MIN} นาที — เครื่องหลับ? ลอง fbhub status"))
+    ddone = sorted(glob.glob(os.path.join(jobs_dir, "dry-group-*.done")), key=os.path.getmtime)
+    if ddone and not group_watching:
+        age_h = (now - os.path.getmtime(ddone[-1])) / 3600
+        real_after = gdone and os.path.getmtime(gdone[-1]) > os.path.getmtime(ddone[-1])
+        if DRY_REMIND_H[0] <= age_h <= DRY_REMIND_H[1] and not real_after:
+            out.append(("group-dry ลืมเปิด", "👉 fb-hub: ซ้อมคอมเมนต์กลุ่มเสร็จแล้ว แต่ตัวจับเวลากลุ่มยังปิดอยู่ — ระบบยังไม่คอมเมนต์กลุ่มเลย"
+                        " ดูผลซ้อมแล้วรัน fbhub on (ถ้าตั้งใจปิด ไม่ต้องทำอะไร จะเลิกเตือนเองใน 3 วัน)"))
     done = sorted(glob.glob(os.path.join(jobs_dir, "fbwatch-*.done")), key=os.path.getmtime)
     if watching:
         if not done:
@@ -135,6 +144,15 @@ def demo():
     assert "fbgroup เงียบ" not in [k for k, _ in problems(now, d, group_watching=False, group_log=gl)], "ปิดฝั่งกลุ่ม = ไม่เตือน"
     mk("fbgroup-1.done", 5); mk("fbgroup-1.exit", 5, "1")
     assert "fbgroup exit 1" in [k for k, _ in problems(now, d)]
+    mk("dry-group-1.done", 2)
+    assert "group-dry ลืมเปิด" not in [k for k, _ in problems(now, d)], "เพิ่งซ้อมเสร็จ = ยังไม่เตือน"
+    mk("dry-group-1.done", 8 * 60); mk("fbgroup-1.done", 9 * 60)
+    assert "group-dry ลืมเปิด" in [k for k, _ in problems(now, d)], "ซ้อมเสร็จ 8 ชม. ตัวจับเวลายังปิด = เตือน"
+    assert "group-dry ลืมเปิด" not in [k for k, _ in problems(now, d, group_watching=True, group_log=gl)], "เปิดแล้ว = ไม่เตือน"
+    mk("fbgroup-1.done", 60)
+    assert "group-dry ลืมเปิด" not in [k for k, _ in problems(now, d)], "มีรอบจริงหลังซ้อม = ไม่เตือน"
+    mk("fbgroup-1.done", 9 * 60); mk("dry-group-1.done", 80 * 60)
+    assert "group-dry ลืมเปิด" not in [k for k, _ in problems(now, d)], "เกิน 3 วัน = ถือว่าตั้งใจปิด"
     shutil.rmtree(d)
     print("✅ fb-deadman demo ผ่าน")
 

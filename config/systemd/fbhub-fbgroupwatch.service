@@ -1,0 +1,12 @@
+[Unit]
+Description=fb-hub: คอมเมนต์ใต้โพสต์คนอื่นในกลุ่ม (เข้าคิวเมื่อโควตาว่าง)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=__USER__
+Environment=DISPLAY=:99
+WorkingDirectory=__HOME__
+ExecStart=__HOME__/fb-hub/bin/fb-group-watch.sh
+StandardOutput=append:__HOME__/fb-hub/logs/fbgroupwatch.agent.log
+StandardError=append:__HOME__/fb-hub/logs/fbgroupwatch.agent.log

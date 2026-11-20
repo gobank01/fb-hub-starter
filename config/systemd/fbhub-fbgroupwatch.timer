@@ -1,0 +1,10 @@
+[Unit]
+Description=ตัวจับเวลา fbgroupwatch — เช็กทุก 10 นาที (ไม่เรียก AI จนกว่าโควตาว่าง)
+
+[Timer]
+OnBootSec=7min
+OnUnitActiveSec=10min
+Unit=fbhub-fbgroupwatch.service
+
+[Install]
+WantedBy=timers.target

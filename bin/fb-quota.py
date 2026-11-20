@@ -12,6 +12,11 @@ fb-quota.py — เพดานจำนวนคอมเมนต์ กัน
     MAX_PER_HOUR=12      ต่อชั่วโมง (ย้อนหลัง 60 นาที ไม่ใช่ชั่วโมงตามนาฬิกา)
     MAX_PER_DAY=0        ต่อวันตามปฏิทิน (0 = ไม่จำกัด)
 
+ถังที่ 2 — คอมเมนต์ใต้โพสต์ "คนอื่น" ในกลุ่ม (นับแยกสนิท ใช้เต็มฝั่งหนึ่งไม่กินอีกฝั่ง)
+    python3 ~/fb-hub/bin/fb-quota.py --group
+    GROUP_MAX_PER_HOUR=3   GROUP_MAX_PER_DAY=50   (ระบบต้นแบบใช้ค่านี้ ส่งไป 840+ อันไม่โดนอะไร)
+    นับเฉพาะบรรทัด "[group] SENT ..." — แท็ก [group] คือตัวแยกถัง ห้ามถอด
+
 นับจาก ~/fb-hub/state/progress.log เฉพาะบรรทัดที่ขึ้นต้นด้วย "SENT " หลังเวลา
 บรรทัดสรุปรอบที่บังเอิญมีคำว่า SENT อยู่กลางบรรทัด "ไม่นับ" (บั๊กจริง: 178 บรรทัดสรุปถูกนับ
 เป็นการส่ง → โควตาหลอกว่าเต็มตอนโพสต์ระเบิด ซึ่งเป็นช่วงที่ต้องตอบมากที่สุด)
@@ -29,6 +34,7 @@ WINDOW = timedelta(hours=1)
 
 FULL_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)\s+(.*)$")
 SEND_RE = re.compile(r"^SENT\s")
+GROUP_RE = re.compile(r"^\[group\] SENT\s")
 
 
 def _load_env():
@@ -50,10 +56,10 @@ def _int(name, default):
         return default
 
 
-def sent_times(text):
+def sent_times(text, rx=SEND_RE):
     for line in text.splitlines():
         m = FULL_RE.match(line)
-        if not m or not SEND_RE.match(m.group(3)):
+        if not m or not rx.match(m.group(3)):
             continue
         hhmm = m.group(2) + (":00" if len(m.group(2)) == 5 else "")
         try:
@@ -62,8 +68,8 @@ def sent_times(text):
             continue
 
 
-def check(text, now, per_hour=12, per_day=0):
-    mine = list(sent_times(text))
+def check(text, now, per_hour=12, per_day=0, rx=SEND_RE):
+    mine = list(sent_times(text, rx))
     recent = sorted(t for t in mine if timedelta(0) <= now - t < WINDOW)
     today = [t for t in mine if t.date() == now.date()]
     # ด่านวันมาก่อน — เต็มวันแล้วบอกให้รอพรุ่งนี้ ไม่ใช่ให้รออีกชั่วโมงแล้วมาเจอเต็มซ้ำ
@@ -96,6 +102,14 @@ def demo():
     assert ok, "ของเมื่อวานไม่นับรวมวันนี้"
     ok, msg = check("", now)
     assert ok and "วันนี้" not in msg
+    # สองถังนับแยกกัน — ฝั่งกลุ่มไม่กินโควตาโพสต์ตัวเอง และกลับกัน
+    mixed = [f"2026-08-08 11:{10 + i:02d}:00 [group] SENT ก{i} {U}" for i in range(3)]
+    ok, msg = check("\n".join(mixed), now)
+    assert ok and "0/12" in msg, "บรรทัดกลุ่มต้องไม่นับในถังโพสต์ตัวเอง"
+    ok, msg = check("\n".join(mixed + lines), now, 3, 50, GROUP_RE)
+    assert not ok and "FULL 3/3" in msg, msg
+    ok, msg = check("\n".join(mixed[:1] + lines), now, 3, 50, GROUP_RE)
+    assert ok and "เหลือชั่วโมงนี้ 2" in msg, "ถังกลุ่มต้องไม่นับบรรทัด SENT ของโพสต์ตัวเอง"
     print("✅ fb-quota demo ผ่าน")
 
 
@@ -109,6 +123,9 @@ if __name__ == "__main__":
     except OSError as e:
         print(f"FULL อ่าน ledger ไม่ได้ ({e}) — ไม่รู้ว่าส่งไปกี่อัน ก็ห้ามส่ง")
         sys.exit(1)
-    ok, msg = check(body, datetime.now(), _int("MAX_PER_HOUR", 12), _int("MAX_PER_DAY", 0))
+    if "--group" in sys.argv:
+        ok, msg = check(body, datetime.now(), _int("GROUP_MAX_PER_HOUR", 3), _int("GROUP_MAX_PER_DAY", 50), GROUP_RE)
+    else:
+        ok, msg = check(body, datetime.now(), _int("MAX_PER_HOUR", 12), _int("MAX_PER_DAY", 0))
     print(msg)
     sys.exit(0 if ok else 1)

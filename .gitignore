@@ -10,3 +10,5 @@ config/voice.md
 config/no-reply.txt
 config/banned-words.txt
 __pycache__/
+config/groups.tsv
+config/shopee-links.tsv

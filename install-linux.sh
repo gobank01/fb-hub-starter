@@ -47,6 +47,8 @@ chmod +x "$HUB"/bin/*.sh "$HUB"/bin/*.py "$HUB"/bin/fbhub 2>/dev/null || true
 [ -f "$HUB/config/voice.md" ]       || cp "$SRC/config/voice.md.example"       "$HUB/config/voice.md"
 [ -f "$HUB/config/no-reply.txt" ]     || cp "$SRC/config/no-reply.txt.example"     "$HUB/config/no-reply.txt"
 [ -f "$HUB/config/banned-words.txt" ] || cp "$SRC/config/banned-words.txt.example" "$HUB/config/banned-words.txt"
+[ -f "$HUB/config/groups.tsv" ] || cp "$SRC/config/groups.tsv.example" "$HUB/config/groups.tsv"
+[ -f "$HUB/config/shopee-links.tsv" ] || cp "$SRC/config/shopee-links.tsv.example" "$HUB/config/shopee-links.tsv"
 touch "$HUB/state/progress.log" "$HUB/state/replies.tsv"
 
 echo "▸ เรียก fbhub ได้จากทุกที่"

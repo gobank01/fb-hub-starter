@@ -11,6 +11,9 @@ usage() {
   print -r -- "fbhub queue   — คิวงานตอนนี้"
   print -r -- "fbhub chrome  — เปิด Chrome ใหม่"
   print -r -- "fbhub dry     — ซ้อมแบบไม่ส่งจริง (ปิดตัวจับเวลาให้เอง)"
+  print -r -- "fbhub group   — กลุ่มที่ตั้งไว้ + ตารางว่าชั่วโมงไหนไปกลุ่มไหน + โควตากลุ่ม"
+  print -r -- "fbhub group-dry — ซ้อมคอมเมนต์กลุ่มแบบไม่ส่งจริง"
+  print -r -- "fbhub shopee  — สถานะลิงก์ Shopee (API/รายการ) + ลิงก์ที่แปะไป + คอมมิชชั่น"
   print -r --
   print -r -- 'fbhub job "..."     — สั่งงานอะไรก็ได้เป็นภาษาไทย'
   print -r -- "fbhub result <id>  — ดูผลงานที่สั่งไป"
@@ -50,11 +53,11 @@ HUB="$HOME/fb-hub"
 AGENTS="$HOME/Library/LaunchAgents"
 JOBS="$HUB/jobs"
 PROGRESS="$HUB/state/progress.log"
-WATCHERS=(com.fbhub.fbwatch)
+WATCHERS=(com.fbhub.fbwatch com.fbhub.fbgroupwatch)
 
 # Linux ใช้ systemd timer แทน launchd — ชื่อ unit คนละแบบกับ plist
 IS_LINUX=0
-[[ "$(uname)" == "Linux" ]] && { IS_LINUX=1; WATCHERS=(fbhub-fbwatch) }
+[[ "$(uname)" == "Linux" ]] && { IS_LINUX=1; WATCHERS=(fbhub-fbwatch fbhub-fbgroupwatch) }
 
 running() {
   if (( IS_LINUX )); then
@@ -73,6 +76,11 @@ status)
   for a in $WATCHERS; do
     running "$a" && print -r -- "  ✅ ${a##*.}  เปิดอยู่" || print -r -- "  ⭕️ ${a##*.}  ปิดอยู่"
   done
+  # ซ้อม group-dry แล้วตัวจับเวลากลุ่มยังปิด = ลืมเปิดกลับ (ซ้อมเสร็จแล้วไม่มีอะไรส่งเลย)
+  local dg=("$JOBS"/dry-group-*.done(Nom))
+  if (( ${#dg} )) && ! running "${WATCHERS[2]}"; then
+    print -r -- "  👉 ซ้อมคอมเมนต์กลุ่มไว้แล้ว (${dg[1]:t:r}) แต่ตัวจับเวลากลุ่มยังปิด — พอใจผลซ้อมแล้วรัน: fbhub on"
+  fi
 
   # Chrome ต้องเปิดพร้อมพอร์ต 9222 ไม่งั้นบอทต่อไม่ได้
   if curl -s --max-time 2 http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
@@ -107,8 +115,10 @@ status)
   if [[ -f "$PROGRESS" ]]; then
     # grep -c คืน exit 1 ตอนนับได้ 0 — ต้องรับค่าใส่ตัวแปรก่อน ไม่งั้นบรรทัดแตกเป็นสอง
     local today=$(date '+%F')
-    local n=$(grep -c "^$today.*\(SENT\|FOLLOWUP\)" "$PROGRESS" 2>/dev/null)
-    print -r -- "ตอบไปวันนี้: ${n:-0} คน"
+    local n=$(grep -c "^$today [0-9:]* \(SENT\|FOLLOWUP\)" "$PROGRESS" 2>/dev/null)
+    local g=$(grep -c "^$today [0-9:]* \[group\] SENT" "$PROGRESS" 2>/dev/null)
+    print -r -- "ตอบใต้โพสต์ตัวเองวันนี้: ${n:-0} คน"
+    print -r -- "คอมเมนต์ในกลุ่มวันนี้: ${g:-0} อัน  ($(python3 "$HUB/bin/fb-quota.py" --group 2>&1))"
     local last=$(tail -1 "$PROGRESS" 2>/dev/null)
     [[ -n "$last" ]] && print -r -- "ล่าสุด: ${last:0:100}"
   fi
@@ -156,6 +166,34 @@ dashboard)
   fi
   print -r -- "ยิงขึ้น $DASHBOARD_URL ..."
   /usr/bin/python3 "$HUB/bin/log-push.py" && print -r -- "✅ สำเร็จ เปิดดูได้ที่ $DASHBOARD_URL"
+  ;;
+
+group)
+  python3 "$HUB/bin/fb-group-pick.py" --table || exit 1
+  print -r --
+  print -r -- "โควตากลุ่ม: $(python3 "$HUB/bin/fb-quota.py" --group 2>&1)"
+  print -r -- "log ล่าสุด:"; tail -5 "$HUB/logs/fb-group-watch.log" 2>/dev/null
+  ;;
+
+group-dry)
+  # ซ้อมคอมเมนต์กลุ่ม — สแกน อ่าน ร่าง ตรวจ แต่ส่งแบบ --dry (ผ่านด่านตรวจตัวตนจริง ไม่กดอะไร)
+  watcher_off "${WATCHERS[2]}" >/dev/null
+  local f="$JOBS/dry-group-$(date +%s).job"
+  { print -r -- "งาน: ซ้อมแบบ DRY RUN — ทำทุกขั้นตามกฎข้างล่าง แต่ข้อ 7 ให้เติม --dry ท้ายคำสั่ง fb-group-comment.js"
+    print -r -- "ห้ามส่งจริงเด็ดขาด · รายงาน RESULT: DRY <จำนวน> ตามด้วยเรื่องของโพสต์ + ข้อความที่จะส่ง (+ลิงก์ถ้ามี) ทุกอัน"
+    print -r -- ""
+    "$HUB/bin/fb-group-watch.sh" --render | grep -v '^#quiet$'
+    print -r -- ""
+    print -r -- "ท้ายรายงานเติมบรรทัดนี้เสมอ: ⚠️ ตัวจับเวลากลุ่มยังปิดอยู่ — พอใจผลซ้อมแล้วรัน fbhub on ระบบถึงจะเริ่มคอมเมนต์เอง"
+  } > "$f"
+  print -r -- "เข้าคิวแล้ว: ${f:t}"
+  print -r -- "⚠️  ปิดตัวจับเวลากลุ่มไว้ระหว่างซ้อม — ระบบจะไม่คอมเมนต์กลุ่มเองจนกว่าจะรัน fbhub on"
+  print -r -- "ดูผล:  cat ${f:r}.out   ·  พอใจแล้วเปิดกลับ:  fbhub on   (fbhub status จะเตือนจนกว่าจะเปิด)"
+  ;;
+
+shopee)
+  python3 "$HUB/bin/shopee-aff.py" --selftest
+  python3 "$HUB/bin/shopee-aff.py" --stats
   ;;
 
 log)   tail -${2:-30} "$PROGRESS" ;;
